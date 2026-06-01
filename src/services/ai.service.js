@@ -1,5 +1,3 @@
-const FormData = require('form-data');
-
 const CNN_URL =
   'https://abdulrhmanHelmy-plantvillage-disease-detectorr.hf.space/predict';
 const LLM_URL =
@@ -12,17 +10,16 @@ const LLM_URL =
  * @returns {Promise<object>} Parsed JSON response from the CNN model
  */
 const detectDisease = async (imageBuffer, filename) => {
+  // Use the native FormData + Blob (Node 18+) so it works with native fetch.
+  // The npm 'form-data' package is NOT compatible with native fetch.
+  const blob = new Blob([imageBuffer], { type: 'image/jpeg' });
   const form = new FormData();
-  form.append('file', imageBuffer, {
-    filename,
-    contentType: 'image/jpeg',
-  });
+  form.append('file', blob, filename);
 
   const response = await fetch(`${CNN_URL}?top_k=1`, {
     method: 'POST',
     headers: {
       accept: 'application/json',
-      ...form.getHeaders(),
     },
     body: form,
   });

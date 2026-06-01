@@ -284,16 +284,21 @@ const sendImageMessage = async (req, res) => {
     });
   }
 
-  // Build a human-readable answer from the CNN predictions
+  // Build a human-readable answer from the CNN response
   let answerText = '';
-  if (Array.isArray(cnnResponse) && cnnResponse.length > 0) {
-    const predictions = cnnResponse.map(
-      (p) => `${p.label || p.class || 'Unknown'}: ${((p.confidence || p.score || 0) * 100).toFixed(1)}%`
-    );
-    answerText = `🌿 Disease Detection Results:\n${predictions.join('\n')}`;
-  } else if (cnnResponse.predictions) {
+  if (cnnResponse.diagnosis) {
+    // Use the structured diagnosis from the API
+    const d = cnnResponse.diagnosis;
+    answerText = `🌿 Disease Detection Results:\n`;
+    answerText += `**Disease:** ${d.disease}\n`;
+    answerText += `**Confidence:** ${(d.confidence * 100).toFixed(1)}%\n`;
+    answerText += `**Severity:** ${d.severity}\n`;
+    answerText += `**Healthy:** ${d.is_healthy ? 'Yes' : 'No'}\n\n`;
+    answerText += `📋 ${d.description}\n\n`;
+    answerText += `💡 **Recommendation:** ${d.recommendation}`;
+  } else if (cnnResponse.predictions && cnnResponse.predictions.length > 0) {
     const predictions = cnnResponse.predictions.map(
-      (p) => `${p.label || p.class || 'Unknown'}: ${((p.confidence || p.score || 0) * 100).toFixed(1)}%`
+      (p) => `${p.display_name || p.class_name || 'Unknown'}: ${p.confidence_pct || ((p.confidence || 0) * 100).toFixed(1) + '%'}`
     );
     answerText = `🌿 Disease Detection Results:\n${predictions.join('\n')}`;
   } else {
