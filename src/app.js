@@ -10,6 +10,7 @@ const errorMiddleware = require('./middlewares/error.middleware');
 
 // Import Routes
 const authRoutes = require('./routes/auth.routes');
+const chatRoutes = require('./routes/chat.routes');
 
 const app = express();
 
@@ -30,6 +31,7 @@ app.get('/health', (req, res) => {
 app.use('/api-docs', swaggerUi.serve, swaggerUi.setup(swaggerDocument));
 
 app.use('/api/auth', authRoutes);
+app.use('/api/chat', chatRoutes);
 
 // Unhandled Route Handler
 app.use('*', (req, res) => {
