@@ -5,8 +5,7 @@ const { generateToken } = require('../utils/jwt.util');
 // @route   POST /api/auth/signup
 // @access  Public
 const signup = async (req, res) => {
-  const { username, email, password } = req.body;
-
+  const { username, email, password, governorate } = req.body;
   // Check if user already exists
   const userExists = await User.findOne({ email });
 
@@ -19,6 +18,7 @@ const signup = async (req, res) => {
     username,
     email,
     password,
+    governorate,
   });
 
   if (user) {
@@ -30,6 +30,7 @@ const signup = async (req, res) => {
         _id: user._id,
         username: user.username,
         email: user.email,
+        governorate: user.governorate,
         token,
       },
     });
@@ -68,12 +69,37 @@ const signin = async (req, res) => {
       _id: user._id,
       username: user.username,
       email: user.email,
+      governorate: user.governorate,
       token,
     },
   });
 };
+// @desc    Get current logged in user profile
+// @route   GET /api/auth/me
+// @access  Private
+const getMe = async (req, res) => {
+  // بنجيب أحدث بيانات لليوزر من الداتا بيز
+  const user = await User.findById(req.user._id);
+
+  if (!user) {
+    return res.status(404).json({ success: false, message: 'User not found' });
+  }
+
+  res.status(200).json({
+    success: true,
+    data: {
+      _id: user._id,
+      username: user.username,
+      email: user.email,
+      governorate: user.governorate,
+      createdAt: user.createdAt,
+    },
+  });
+};
+
 
 module.exports = {
   signup,
   signin,
+  getMe,
 };

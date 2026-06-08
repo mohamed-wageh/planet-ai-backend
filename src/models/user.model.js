@@ -1,6 +1,34 @@
 const mongoose = require('mongoose');
 const bcrypt = require('bcrypt');
-
+const egyptGovernorates = [
+  'Cairo',
+  'Alexandria',
+  'Giza',
+  'Qalyubia',
+  'Dakahlia',
+  'Sharqia',
+  'Gharbia',
+  'Monufia',       
+  'Beheira',
+  'Kafr El Sheikh',
+  'Damietta',
+  'Port Said',
+  'Ismailia',
+  'Suez',
+  'North Sinai',
+  'South Sinai',
+  'Matrouh',
+  'Faiyum',
+  'Beni Suef',
+  'Minya',
+  'Asyut',         
+  'Sohag',
+  'Qena',
+  'Luxor',
+  'Aswan',
+  'Red Sea',     
+  'New Valley'    
+];
 const userSchema = new mongoose.Schema(
   {
     username: {
@@ -25,6 +53,14 @@ const userSchema = new mongoose.Schema(
       minlength: [6, 'Password must be at least 6 characters long'],
       select: false, // Don't return password by default
     },
+    governorate: {
+      type: String,
+      required: [true, 'Please provide your governorate'],
+      enum: {
+        values: egyptGovernorates,
+        message: '{VALUE} is not a valid Egyptian governorate'
+      }
+    }
   },
   {
     timestamps: true,

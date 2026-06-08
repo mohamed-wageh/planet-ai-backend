@@ -1,5 +1,6 @@
 const express = require('express');
-const { signup, signin } = require('../controllers/auth.controller');
+const { signup, signin, getMe } = require('../controllers/auth.controller');
+const { protect } = require('../middlewares/auth.middleware');
 
 const router = express.Router();
 
@@ -8,7 +9,8 @@ const router = express.Router();
  * /api/auth/signup:
  *   post:
  *     summary: Register a new user
- *     tags: [Auth]
+ *     tags:
+ *       - Auth
  *     requestBody:
  *       required: true
  *       content:
@@ -19,6 +21,7 @@ const router = express.Router();
  *               - username
  *               - email
  *               - password
+ *               - governorate
  *             properties:
  *               username:
  *                 type: string
@@ -27,6 +30,9 @@ const router = express.Router();
  *               password:
  *                 type: string
  *                 minLength: 6
+ *               governorate:
+ *                 type: string
+ *                 example: "Cairo"
  *     responses:
  *       201:
  *         description: User registered successfully
@@ -40,7 +46,8 @@ router.post('/signup', signup);
  * /api/auth/signin:
  *   post:
  *     summary: Authenticate a user and give a token
- *     tags: [Auth]
+ *     tags:
+ *       - Auth
  *     requestBody:
  *       required: true
  *       content:
@@ -62,5 +69,22 @@ router.post('/signup', signup);
  *         description: Invalid email or password
  */
 router.post('/signin', signin);
+
+/**
+ * @swagger
+ * /api/auth/me:
+ *   get:
+ *     summary: Get current logged-in user profile
+ *     tags:
+ *       - Auth
+ *     security:
+ *       - bearerAuth: []
+ *     responses:
+ *       200:
+ *         description: User profile data
+ *       401:
+ *         description: Not authorized, token failed
+ */
+router.get('/me', protect, getMe);
 
 module.exports = router;

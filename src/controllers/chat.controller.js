@@ -1,6 +1,8 @@
 const Conversation = require('../models/conversation.model');
 const Message = require('../models/message.model');
 const { detectDisease, askLLM } = require('../services/ai.service');
+const DiseaseScan = require('../models/disease-scan.model');
+const User = require('../models/user.model');
 
 // @desc    Create a new conversation
 // @route   POST /api/chat/conversations
@@ -229,7 +231,7 @@ const sendTextMessage = async (req, res) => {
 // @route   POST /api/chat/conversations/:id/image
 // @access  Private
 const sendImageMessage = async (req, res) => {
-  if (!req.file) {
+  if (!req.file) {  
     return res.status(400).json({
       success: false,
       message: 'Image file is required',
@@ -283,6 +285,32 @@ const sendImageMessage = async (req, res) => {
       },
     });
   }
+  const user = await User.findById(req.user._id);
+
+  let diseaseName = 'Unknown';
+  let confidence = 0;
+  let severity = 'Unknown';
+  let isHealthy = false;
+
+  if (cnnResponse.diagnosis) {
+    diseaseName = cnnResponse.diagnosis.disease;
+    confidence = cnnResponse.diagnosis.confidence*100;
+    severity = cnnResponse.diagnosis.severity;
+    isHealthy = cnnResponse.diagnosis.is_healthy;
+  } else if (cnnResponse.predictions && cnnResponse.predictions.length > 0) {
+    diseaseName = cnnResponse.predictions[0].display_name || cnnResponse.predictions[0].class_name;
+    confidence = cnnResponse.predictions[0].confidence_pct || cnnResponse.predictions[0].confidence;
+  }
+
+  await DiseaseScan.create({
+    user: req.user._id,
+    governorate: user.governorate,
+    imageUrl: base64Image, 
+    diseaseName,
+    confidence,
+    severity,
+    isHealthy
+  });
 
   // Build a human-readable answer from the CNN response
   let answerText = '';
