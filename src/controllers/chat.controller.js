@@ -128,6 +128,9 @@ const deleteConversation = async (req, res) => {
 // @desc    Send a text message (LLM)
 // @route   POST /api/chat/conversations/:id/text
 // @access  Private
+// @desc    Send a text message (LLM)
+// @route   POST /api/chat/conversations/:id/text
+// @access  Private
 const sendTextMessage = async (req, res) => {
   const { question } = req.body;
 
@@ -168,32 +171,50 @@ const sendTextMessage = async (req, res) => {
     .sort({ createdAt: 1 })
     .lean();
 
-  const history = previousMessages.map((msg) => ({
-    role: msg.role,
-    content: msg.content,
-  }));
+  // ----------------------------------------------------
+  // [التعديل الأول: تجميع الـ History بالشكل الصحيح]
+  // ----------------------------------------------------
+  const history = [];
+  let tempPair = {};
+
+  previousMessages.forEach((msg) => {
+    // تجاهل أي رسائل خطأ قديمة مسجلة عشان ما تبوظش الـ API
+    if (msg.content && msg.content.includes("Sorry, I couldn't process")) {
+      return;
+    }
+
+    if (msg.role === 'user') {
+      tempPair.question = msg.content;
+    } else if (msg.role === 'assistant' && tempPair.question) {
+      tempPair.answer = msg.content;
+      history.push({ ...tempPair }); // ضيف السؤال والإجابة كعنصر واحد
+      tempPair = {}; // فضي المتغير عشان الزوج اللي بعده
+    }
+  });
 
   // Call the LLM
   let llmResponse;
   try {
     llmResponse = await askLLM(question, history);
   } catch (error) {
-    // Save error as assistant message so user sees it
-    const errorMessage = await Message.create({
-      conversation: conversation._id,
-      role: 'assistant',
-      type: 'text',
-      content: `Sorry, I couldn't process your question. Error: ${error.message}`,
-      source: 'llm',
-      metadata: { error: error.message },
-    });
-
+    // ----------------------------------------------------
+    // [التعديل الثاني: عدم حفظ رسالة الخطأ في قاعدة البيانات]
+    // ----------------------------------------------------
+    // هنكتفي بإرسال الرد للـ Frontend فقط كرسالة وهمية (بدون Database Save)
+    
     return res.status(502).json({
       success: false,
       message: 'LLM service is currently unavailable',
       data: {
         userMessage,
-        assistantMessage: errorMessage,
+        assistantMessage: {
+          _id: 'temp_error_id',
+          conversation: conversation._id,
+          role: 'assistant',
+          type: 'text',
+          content: 'عذراً، حدث خطأ في الاتصال بالخادم. يرجى المحاولة مرة أخرى.',
+          isError: true, // ممكن تستخدمها في الـ Frontend عشان تلون الرسالة بالأحمر
+        },
       },
     });
   }
@@ -367,3 +388,4 @@ module.exports = {
   sendTextMessage,
   sendImageMessage,
 };
+
