@@ -11,12 +11,11 @@ const getPublicScans = async (req, res) => {
 
   // 2. Filtering
   const filter = {};
-  // لو الفرونت إند باعت اسم محافظة أو مرض في اللينك، هنفلتر بيهم
   if (req.query.governorate) filter.governorate = req.query.governorate;
   if (req.query.diseaseName) filter.diseaseName = req.query.diseaseName;
 
   // 3. Sorting
-  let sortObj = { createdAt: -1 }; // الافتراضي: الأحدث أولاً
+  let sortObj = { createdAt: -1 }; 
   if (req.query.sortBy === 'governorate') {
     sortObj = { governorate: 1, createdAt: -1 };
   } else if (req.query.sortBy === 'disease') {
@@ -29,7 +28,7 @@ const getPublicScans = async (req, res) => {
     .sort(sortObj)
     .skip(skip)
     .limit(limit)
-    .select('-user') // إخفاء الـ ID بتاع اليوزر للخصوصية
+    .select('-user') 
     .lean();
 
   res.status(200).json({
@@ -50,14 +49,12 @@ const getPublicScans = async (req, res) => {
 const getDistributionByGovernorate = async (req, res) => {
   const distribution = await DiseaseScan.aggregate([
     {
-      // الخطوة الأولى: تجميع الحالات بالمحافظة واسم المرض
       $group: {
         _id: { governorate: '$governorate', disease: '$diseaseName' },
         count: { $sum: 1 },
       },
     },
     {
-      // الخطوة التانية: تجميع كل الأمراض جوه المحافظة الواحدة
       $group: {
         _id: '$_id.governorate',
         diseases: {
@@ -70,7 +67,6 @@ const getDistributionByGovernorate = async (req, res) => {
       },
     },
     {
-      // الترتيب: المحافظات اللي فيها فحوصات أكتر تظهر الأول
       $sort: { totalScansInGovernorate: -1 },
     },
   ]);
@@ -88,14 +84,12 @@ const getDistributionByGovernorate = async (req, res) => {
 const getDistributionByDisease = async (req, res) => {
   const distribution = await DiseaseScan.aggregate([
     {
-      // الخطوة الأولى: تجميع الحالات باسم المرض والمحافظة
       $group: {
         _id: { disease: '$diseaseName', governorate: '$governorate' },
         count: { $sum: 1 },
       },
     },
     {
-      // الخطوة التانية: تجميع كل المحافظات جوه المرض الواحد
       $group: {
         _id: '$_id.disease',
         governorates: {
@@ -108,7 +102,6 @@ const getDistributionByDisease = async (req, res) => {
       },
     },
     {
-      // الترتيب: المرض الأكثر انتشاراً يظهر الأول
       $sort: { totalCasesOfDisease: -1 },
     },
   ]);

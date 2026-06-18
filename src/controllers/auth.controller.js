@@ -78,7 +78,6 @@ const signin = async (req, res) => {
 // @route   GET /api/auth/me
 // @access  Private
 const getMe = async (req, res) => {
-  // بنجيب أحدث بيانات لليوزر من الداتا بيز
   const user = await User.findById(req.user._id);
 
   if (!user) {

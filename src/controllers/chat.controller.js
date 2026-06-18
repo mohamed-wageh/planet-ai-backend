@@ -171,14 +171,10 @@ const sendTextMessage = async (req, res) => {
     .sort({ createdAt: 1 })
     .lean();
 
-  // ----------------------------------------------------
-  // [التعديل الأول: تجميع الـ History بالشكل الصحيح]
-  // ----------------------------------------------------
   const history = [];
   let tempPair = {};
 
   previousMessages.forEach((msg) => {
-    // تجاهل أي رسائل خطأ قديمة مسجلة عشان ما تبوظش الـ API
     if (msg.content && msg.content.includes("Sorry, I couldn't process")) {
       return;
     }

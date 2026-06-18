@@ -34,7 +34,7 @@ const userSchema = new mongoose.Schema(
     username: {
       type: String,
       required: [true, 'Please provide a username'],
-      unique: true,
+      unique: false,
       trim: true,
       minlength: [3, 'Username must be at least 3 characters long'],
     },
@@ -60,6 +60,11 @@ const userSchema = new mongoose.Schema(
         values: egyptGovernorates,
         message: '{VALUE} is not a valid Egyptian governorate'
       }
+    },
+    role: {
+      type: String,
+      enum: ['USER', 'DOCTOR'],
+      default: 'USER'
     }
   },
   {
