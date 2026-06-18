@@ -101,3 +101,20 @@ exports.voteComment = async (req, res) => {
   const currentScore = comment.upvotes.length - comment.downvotes.length;
   res.status(200).json({ success: true, score: currentScore });
 };
+exports.getPostsByUserId = async (req, res, next) => {
+    try {
+        const { userId } = req.params;
+
+        const posts = await Post.find({ author: userId })
+            .sort('-createdAt') 
+            .populate('author', 'username role governorate');
+
+        res.status(200).json({
+            success: true,
+            count: posts.length,
+            data: posts
+        });
+    } catch (error) {
+        next(error);
+    }
+};
