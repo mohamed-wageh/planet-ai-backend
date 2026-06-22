@@ -203,12 +203,11 @@ router.delete('/conversations/:id', deleteConversation);
  *         description: Not authorized
  */
 router.post('/conversations/:id/text', sendTextMessage);
-
 /**
  * @swagger
  * /api/chat/conversations/{id}/image:
  *   post:
- *     summary: Upload a plant image for disease detection (processed by CNN)
+ *     summary: Upload a plant image for disease detection with optional text question (CNN + LLM processing)
  *     tags: [Messages]
  *     security:
  *       - bearerAuth: []
@@ -232,9 +231,13 @@ router.post('/conversations/:id/text', sendTextMessage);
  *                 type: string
  *                 format: binary
  *                 description: The plant leaf image to analyze
+ *               question:
+ *                 type: string
+ *                 description: Optional user question or caption about the image
+ *                 example: "Is this disease dangerous?"
  *     responses:
  *       200:
- *         description: CNN response saved
+ *         description: CNN + LLM response saved
  *       404:
  *         description: Conversation not found
  *       502:
@@ -242,6 +245,9 @@ router.post('/conversations/:id/text', sendTextMessage);
  *       401:
  *         description: Not authorized
  */
-router.post('/conversations/:id/image', upload.single('file'), sendImageMessage);
-
+router.post(
+  '/conversations/:id/image',
+  upload.single('file'),
+  sendImageMessage
+);
 module.exports = router;

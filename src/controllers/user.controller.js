@@ -41,6 +41,7 @@ const getGreeting = async (req, res) => {
   if (!user) return res.status(404).json({ success: false, message: 'User not found' });
 
   const { username, governorate } = user;
+  const firstName = username.trim().split(' ')[0];  // ناخد أول كلمة من اسم المستخدم
   const govArabic = governoratesArabic[governorate] || governorate;
 
   try {
@@ -60,7 +61,7 @@ const getGreeting = async (req, res) => {
 
     // متغيرات الـ templates
     const vars = {
-      name:      username,
+      name:      firstName,   // الاسم الأول بس
       gov:       govArabic,
       temp,
       feelsLike,
@@ -290,12 +291,12 @@ const getGreeting = async (req, res) => {
 
   } catch (error) {
     
-    // Fallback متنوع في حالة فشل الـ API
+    // Fallback مع استخدام الاسم الأول المستخرج من اليوزر نيم
     const fallbacks = [
-      `🌱 أهلاً بيك يا ${username}! نتمنى تكون إنت وكل زرعك في ${govArabic} بألف خير النهاردة!`,
-      `🌿 يا ${username}! ربنا يبارك في ${govArabic} وكل فلاحيها وزرعها، يوم مبارك عليك!`,
-      `☀️ صباح النور يا ${username}! يوم مبارك على مزرعتك في ${govArabic}. شغّل بركاتك!`,
-      `🌾 مرحباً يا ${username}! اتمنى يومك في ${govArabic} يكون مليان إنتاج وخير.`,
+      `🌱 أهلاً بيك يا ${firstName}! نتمنى تكون إنت وكل زرعك في ${govArabic} بألف خير النهاردة!`,
+      `🌿 يا ${firstName}! ربنا يبارك في ${govArabic} وكل فلاحيها وزرعها، يوم مبارك عليك!`,
+      `☀️ صباح النور يا ${firstName}! يوم مبارك على مزرعتك في ${govArabic}. شغّل بركاتك!`,
+      `🌾 مرحباً يا ${firstName}! اتمنى يومك في ${govArabic} يكون مليان إنتاج وخير.`,
     ];
 
     res.status(200).json({

@@ -1,7 +1,7 @@
 const CNN_URL =
   'https://abdulrhmanHelmy-plantvillage-disease-detectorr.hf.space/predict';
 const LLM_URL =
-  'https://abdallah110-htf.hf.space/query';
+  'https://abdulrhmanhelmy-llm-grok.hf.space/query';
 
 /**
  * Call the CNN plant-disease-detection endpoint.

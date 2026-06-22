@@ -278,7 +278,8 @@ const sendTextMessage = async (req, res) => {
   });
 };
 
-// @desc    Send an image message (CNN diagnosis explained by the LLM)
+
+// @desc    Send an image message (CNN diagnosis explained by the LLM) with optional text
 // @route   POST /api/chat/conversations/:id/image
 // @access  Private
 const sendImageMessage = async (req, res) => {
@@ -288,6 +289,8 @@ const sendImageMessage = async (req, res) => {
       message: 'Image file is required',
     });
   }
+
+  const { question } = req.body;
 
   // Verify conversation belongs to user
   const conversation = await Conversation.findOne({
@@ -305,11 +308,12 @@ const sendImageMessage = async (req, res) => {
   // Convert buffer to base64 data URI for storage
   const base64Image = `data:${req.file.mimetype};base64,${req.file.buffer.toString('base64')}`;
 
-  // Save the user message (image)
+  // Save the user message (image + optional text)
   const userMessage = await Message.create({
     conversation: conversation._id,
     role: 'user',
     type: 'image',
+    content: question || '',
     imageUrl: base64Image,
   });
 
@@ -366,12 +370,10 @@ const sendImageMessage = async (req, res) => {
     isHealthy,
   });
 
-  // Step 2: Build a hidden prompt carrying the CNN results. This is never
-  // shown to the user directly — it's handed to the LLM so it can turn the
-  // raw diagnosis into a natural, human explanation.
+  // Step 2: Build a hidden prompt carrying the CNN results AND the user's question.
   const confidenceDisplay = typeof confidence === 'number' ? confidence.toFixed(1) : confidence;
 
-  const hiddenCnnPrompt = `
+  let hiddenCnnPrompt = `
 لقد قام نظام الذكاء الاصطناعي (CNN) بتحليل صورة نبات رفعها المستخدم، وكانت نتيجة التحليل كالتالي:
 - المرض المكتشف: ${diseaseName}
 - نسبة الثقة في التشخيص: ${confidenceDisplay}%
@@ -379,11 +381,18 @@ const sendImageMessage = async (req, res) => {
 - هل النبات سليم: ${isHealthy ? 'نعم' : 'لا'}
 ${cnnResponse.diagnosis && cnnResponse.diagnosis.description ? `- وصف إضافي من النظام: ${cnnResponse.diagnosis.description}` : ''}
 ${cnnResponse.diagnosis && cnnResponse.diagnosis.recommendation ? `- توصية النظام: ${cnnResponse.diagnosis.recommendation}` : ''}
+`;
 
-المطلوب منك: صغ هذه النتيجة في رسالة طبيعية وودودة موجهة للمستخدم، اشرح له التشخيص ببساطة، وقدم نصائح عملية للتعامل مع الحالة (أو طمئنه إذا كان النبات سليماً). لا تذكر أنك تستلم هذه البيانات من نظام تحليل صور، وتحدث معه مباشرة كخبير زراعي ودود.
-  `.trim();
+  if (question && question.trim() !== '') {
+    hiddenCnnPrompt += `
+وقد أرفق المستخدم السؤال التالي مع الصورة: "${question}"
+المطلوب منك: أجب على سؤال المستخدم بشكل مباشر وواضح بناءً على نتائج التحليل السابقة، وتحدث معه كخبير زراعي ودود. لا تذكر أنك تستلم هذه البيانات من نظام تحليل صور.`;
+  } else {
+    hiddenCnnPrompt += `
+المطلوب منك: صغ هذه النتيجة في رسالة طبيعية وودودة موجهة للمستخدم، اشرح له التشخيص ببساطة، وقدم نصائح عملية للتعامل مع الحالة (أو طمئنه إذا كان النبات سليماً). لا تذكر أنك تستلم هذه البيانات من نظام تحليل صور، وتحدث معه مباشرة كخبير زراعي ودود.`;
+  }
 
-  // Fetch ALL previous messages (text + image) so the LLM keeps full context
+  // Fetch ALL previous messages (text + image) sothe LLM keeps full context
   const previousMessages = await Message.find({
     conversation: conversation._id,
     _id: { $ne: userMessage._id },
@@ -393,8 +402,6 @@ ${cnnResponse.diagnosis && cnnResponse.diagnosis.recommendation ? `- توصية 
 
   const history = buildHistory(previousMessages);
 
-  // Pre-built Arabic fallback text, used only if the LLM call below fails.
-  // The CNN diagnosis is still valid even without the LLM's natural phrasing.
   const buildManualFallbackText = () => {
     if (cnnResponse.diagnosis) {
       const d = cnnResponse.diagnosis;
@@ -437,8 +444,6 @@ ${cnnResponse.diagnosis && cnnResponse.diagnosis.recommendation ? `- توصية 
       metadata: { cnn: cnnResponse, llm: llmResponse },
     });
   } catch (error) {
-    // LLM phrasing failed, but the CNN diagnosis itself is still valid —
-    // fall back to a manually formatted Arabic message instead of failing.
     assistantMessage = await Message.create({
       conversation: conversation._id,
       role: 'assistant',
@@ -449,9 +454,8 @@ ${cnnResponse.diagnosis && cnnResponse.diagnosis.recommendation ? `- توصية 
     });
   }
 
-  // Auto-set title if still default
   if (conversation.title === DEFAULT_CONVERSATION_TITLE) {
-    conversation.title = IMAGE_SCAN_TITLE;
+    conversation.title = question ? question.substring(0, 100) : IMAGE_SCAN_TITLE;
     await conversation.save();
   }
 
