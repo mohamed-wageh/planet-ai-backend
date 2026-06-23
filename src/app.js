@@ -16,6 +16,7 @@ const chatRoutes = require('./routes/chat.routes');
 const userRoutes = require('./routes/user.routes');
 const communityRoutes = require('./routes/community.routes');
 const complaintRoutes = require('./routes/complaint.routes');
+const adminRoutes = require('./routes/admin.routes');
 
 const app = express();
 
@@ -41,6 +42,8 @@ app.use('/api/analytics', analyticsRoutes);
 app.use('/api/user', userRoutes);
 app.use('/api/community', communityRoutes);
 app.use('/api/complaints', complaintRoutes);
+
+app.use('/api/admin', adminRoutes);
 // Unhandled Route Handler
 app.use('*', (req, res) => {
   res.status(404).json({ success: false, message: `Route ${req.originalUrl} not found` });
