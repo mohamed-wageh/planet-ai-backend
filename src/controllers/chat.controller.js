@@ -214,8 +214,7 @@ const sendTextMessage = async (req, res) => {
     content: question,
   });
 
-  // Build history from ALL previous messages (text + image) so the context
-  // doesn't break if the user uploaded an image earlier in the conversation.
+  // Build history from ALL previous messages (text + image)
   const previousMessages = await Message.find({
     conversation: conversation._id,
     _id: { $ne: userMessage._id },
@@ -225,13 +224,11 @@ const sendTextMessage = async (req, res) => {
 
   const history = buildHistory(previousMessages);
 
-  // Call the LLM
+  // Call the LLM with isolated system instructions (Arabic enforcement)
   let llmResponse;
   try {
-    llmResponse = await askLLM(withArabicEnforcement(question), history);
+    llmResponse = await askLLM(question, history, ARABIC_ONLY_INSTRUCTION);
   } catch (error) {
-    // We deliberately do NOT save an error message to the database here —
-    // we just return a temporary one to the frontend.
     return res.status(502).json({
       success: false,
       message: 'LLM service is currently unavailable',
@@ -277,6 +274,7 @@ const sendTextMessage = async (req, res) => {
     },
   });
 };
+
 
 
 // @desc    Send an image message (CNN diagnosis explained by the LLM) with optional text
@@ -370,10 +368,10 @@ const sendImageMessage = async (req, res) => {
     isHealthy,
   });
 
-  // Step 2: Build a hidden prompt carrying the CNN results AND the user's question.
+  // Step 2: Build a clean system prompt containing ONLY the core data and instructions
   const confidenceDisplay = typeof confidence === 'number' ? confidence.toFixed(1) : confidence;
 
-  let hiddenCnnPrompt = `
+  const hiddenCnnPrompt = `
 لقد قام نظام الذكاء الاصطناعي (CNN) بتحليل صورة نبات رفعها المستخدم، وكانت نتيجة التحليل كالتالي:
 - المرض المكتشف: ${diseaseName}
 - نسبة الثقة في التشخيص: ${confidenceDisplay}%
@@ -381,18 +379,16 @@ const sendImageMessage = async (req, res) => {
 - هل النبات سليم: ${isHealthy ? 'نعم' : 'لا'}
 ${cnnResponse.diagnosis && cnnResponse.diagnosis.description ? `- وصف إضافي من النظام: ${cnnResponse.diagnosis.description}` : ''}
 ${cnnResponse.diagnosis && cnnResponse.diagnosis.recommendation ? `- توصية النظام: ${cnnResponse.diagnosis.recommendation}` : ''}
-`;
 
-  if (question && question.trim() !== '') {
-    hiddenCnnPrompt += `
-وقد أرفق المستخدم السؤال التالي مع الصورة: "${question}"
-المطلوب منك: أجب على سؤال المستخدم بشكل مباشر وواضح بناءً على نتائج التحليل السابقة، وتحدث معه كخبير زراعي ودود. لا تذكر أنك تستلم هذه البيانات من نظام تحليل صور.`;
-  } else {
-    hiddenCnnPrompt += `
-المطلوب منك: صغ هذه النتيجة في رسالة طبيعية وودودة موجهة للمستخدم، اشرح له التشخيص ببساطة، وقدم نصائح عملية للتعامل مع الحالة (أو طمئنه إذا كان النبات سليماً). لا تذكر أنك تستلم هذه البيانات من نظام تحليل صور، وتحدث معه مباشرة كخبير زراعي ودود.`;
-  }
+المطلوب منك: تصرف كخبير زراعي ودود وقدم تشخيصاً ونصائح عملية بناءً على هذه المعطيات. لا تذكر أبداً للمستخدم أنك تلقيت هذه البيانات من نظام آخر، بل تحدث وكأنك أنت من قام بالفحص والتشخيص مباشرة.`;
 
-  // Fetch ALL previous messages (text + image) sothe LLM keeps full context
+  // Combine the CNN logic and Arabic enforcement into a single system instruction payload
+  const systemInstruction = `${hiddenCnnPrompt}\n\n${ARABIC_ONLY_INSTRUCTION}`;
+
+  // Isolate the user query. If empty, use a standard fallback prompt for the user role
+  const userQuery = question && question.trim() !== '' ? question : 'برجاء شرح نتيجة التشخيص والنصائح العملية الخاصة بحالة النبات.';
+
+  // Fetch ALL previous messages (text + image) so the LLM keeps full context
   const previousMessages = await Message.find({
     conversation: conversation._id,
     _id: { $ne: userMessage._id },
@@ -428,10 +424,10 @@ ${cnnResponse.diagnosis && cnnResponse.diagnosis.recommendation ? `- توصية 
     return `🌿 نتائج تحليل المرض:\n${JSON.stringify(cnnResponse)}`;
   };
 
-  // Step 3: Ask the LLM to turn the raw diagnosis into a natural explanation
+  // Step 3: Ask the LLM with properly separated parameters (Query vs System Instruction)
   let assistantMessage;
   try {
-    const llmResponse = await askLLM(withArabicEnforcement(hiddenCnnPrompt), history);
+    const llmResponse = await askLLM(userQuery, history, systemInstruction);
     const answerText =
       llmResponse.answer || llmResponse.response || JSON.stringify(llmResponse);
 

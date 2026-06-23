@@ -34,20 +34,22 @@ const detectDisease = async (imageBuffer, filename) => {
 
 /**
  * Call the LLM plant Q&A endpoint.
- * @param {string} question - The user's question
+ * @param {string} question - The user's raw question
  * @param {Array} history - Prior conversation turns [{role, content}, ...]
+ * @param {string} systemInstruction - System rules or CNN context (hidden from user role)
  * @returns {Promise<object>} Parsed JSON response from the LLM
  */
-const askLLM = async (question, history = []) => {
+const askLLM = async (question, history = [], systemInstruction = null) => {
   const response = await fetch(LLM_URL, {
     method: 'POST',
     headers: {
       'Content-Type': 'application/json',
     },
     body: JSON.stringify({
-      question,
+      question, 
       top_k: 3,
       history,
+      system_instruction: systemInstruction, 
     }),
   });
 
