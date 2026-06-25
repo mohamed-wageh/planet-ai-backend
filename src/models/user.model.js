@@ -31,54 +31,61 @@ const egyptGovernorates = [
 ];
 const userSchema = new mongoose.Schema(
   {
+    // داخل userSchema، زيد الفيلدين دول
+    resetPasswordOTP: {
+      type: String,
+      select: false,
+    },
+    resetPasswordOTPExpiry: {
+      type: Date,
+      select: false,
+    },
     username: {
       type: String,
-      required: [true, 'Please provide a username'],
+      required: [true, "Please provide a username"],
       unique: false,
       trim: true,
-      minlength: [3, 'Username must be at least 3 characters long'],
+      minlength: [3, "Username must be at least 3 characters long"],
     },
     email: {
       type: String,
-      required: [true, 'Please provide an email'],
+      required: [true, "Please provide an email"],
       unique: true,
       match: [
         /^(([^<>()[\]\\.,;:\s@"]+(\.[^<>()[\]\\.,;:\s@"]+)*)|(".+"))@((\[[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}\])|(([a-zA-Z\-0-9]+\.)+[a-zA-Z]{2,}))$/,
-        'Please provide a valid email address',
+        "Please provide a valid email address",
       ],
     },
     password: {
       type: String,
-      required: [true, 'Please provide a password'],
-      minlength: [6, 'Password must be at least 6 characters long'],
+      required: [true, "Please provide a password"],
+      minlength: [6, "Password must be at least 6 characters long"],
       select: false, // Don't return password by default
     },
     governorate: {
       type: String,
-      required: [true, 'Please provide your governorate'],
+      required: [true, "Please provide your governorate"],
       enum: {
         values: egyptGovernorates,
-        message: '{VALUE} is not a valid Egyptian governorate'
-      }
+        message: "{VALUE} is not a valid Egyptian governorate",
+      },
     },
     role: {
       type: String,
-      enum: ['USER', 'DOCTOR','ADMIN'],
-      default: 'USER'
-    }
+      enum: ["USER", "DOCTOR", "ADMIN"],
+      default: "USER",
+    },
   },
   {
     timestamps: true,
-  }
+  },
 );
 
 // Hash password before saving
-userSchema.pre('save', async function (next) {
-  // Only hash if the password is new or modified
-  if (!this.isModified('password')) {
-    next();
+userSchema.pre("save", async function () {
+  if (!this.isModified("password")) {
+    return;
   }
-
   const salt = await bcrypt.genSalt(10);
   this.password = await bcrypt.hash(this.password, salt);
 });
@@ -90,3 +97,4 @@ userSchema.methods.matchPassword = async function (enteredPassword) {
 
 const User = mongoose.model('User', userSchema);
 module.exports = User;
+

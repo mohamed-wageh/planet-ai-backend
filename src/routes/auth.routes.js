@@ -1,6 +1,12 @@
-const express = require('express');
-const { signup, signin, getMe } = require('../controllers/auth.controller');
-const { protect } = require('../middlewares/auth.middleware');
+const express = require("express");
+const {
+  signup,
+  signin,
+  getMe,
+  forgotPassword,
+  resetPassword,
+} = require("../controllers/auth.controller");
+const { protect } = require("../middlewares/auth.middleware");
 
 const router = express.Router();
 
@@ -39,7 +45,7 @@ const router = express.Router();
  *       400:
  *         description: Bad request (validation error or user exists)
  */
-router.post('/signup', signup);
+router.post("/signup", signup);
 
 /**
  * @swagger
@@ -68,7 +74,7 @@ router.post('/signup', signup);
  *       401:
  *         description: Invalid email or password
  */
-router.post('/signin', signin);
+router.post("/signin", signin);
 
 /**
  * @swagger
@@ -85,6 +91,64 @@ router.post('/signin', signin);
  *       401:
  *         description: Not authorized, token failed
  */
-router.get('/me', protect, getMe);
+router.get("/me", protect, getMe);
+
+/**
+ * @swagger
+ * /api/auth/forgot-password:
+ *   post:
+ *     summary: Send OTP to email for password reset
+ *     tags:
+ *       - Auth
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             required:
+ *               - email
+ *             properties:
+ *               email:
+ *                 type: string
+ *     responses:
+ *       200:
+ *         description: OTP sent to your email
+ */
+router.post("/forgot-password", forgotPassword);
+
+/**
+ * @swagger
+ * /api/auth/reset-password:
+ *   post:
+ *     summary: Verify OTP and reset password
+ *     tags:
+ *       - Auth
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             required:
+ *               - email
+ *               - otp
+ *               - newPassword
+ *             properties:
+ *               email:
+ *                 type: string
+ *               otp:
+ *                 type: string
+ *                 example: "123456"
+ *               newPassword:
+ *                 type: string
+ *                 minLength: 6
+ *     responses:
+ *       200:
+ *         description: Password reset successfully
+ *       400:
+ *         description: Invalid or expired OTP
+ */
+router.post("/reset-password", resetPassword);
 
 module.exports = router;

@@ -4,7 +4,7 @@ const morgan = require('morgan');
 const swaggerUi = require('swagger-ui-express');
 const swaggerDocument = require('./config/swagger');
 require('express-async-errors'); // To handle async errors in controllers
-
+require("dotenv").config();
 
 // Import Middlewares
 const errorMiddleware = require('./middlewares/error.middleware');
@@ -19,7 +19,8 @@ const complaintRoutes = require('./routes/complaint.routes');
 const adminRoutes = require('./routes/admin.routes');
 
 const app = express();
-
+process.env.EMAIL_USER;
+process.env.EMAIL_PASS;
 // Global Middlewares
 app.use(express.json()); // Parse JSON payloads
 app.use(express.urlencoded({ extended: true }));
@@ -50,6 +51,5 @@ app.use('*', (req, res) => {
 });
 
 // Global Error Handler
-app.use(errorMiddleware);
-
+app.use((err, req, res, next) => errorMiddleware(err, req, res, next));
 module.exports = app;
