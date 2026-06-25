@@ -12,7 +12,6 @@ const IMAGE_PLACEHOLDER = '[صورة مرفوعة من قبل المستخدم]'
 // Strict instruction appended to every prompt sent to the LLM to force Arabic-only output
 const ARABIC_ONLY_INSTRUCTION =
   '\n\nIMPORTANT: You MUST write your entire response in Arabic language only. Do not use English or any other language in your reply.';
-
 const withArabicEnforcement = (prompt) => `${prompt}${ARABIC_ONLY_INSTRUCTION}`;
 
 /**
@@ -185,7 +184,16 @@ const deleteConversation = async (req, res) => {
 // @access  Private
 const sendTextMessage = async (req, res) => {
   const { question } = req.body;
-
+  const user = await User.findById(req.user._id);
+  
+  const fullUserName = user.name || user.username || '';
+  const firstName = fullUserName.trim().split(/\s+/)[0];
+  
+  const nameInstruction = firstName 
+    ? `\nمعلومة لك: اسم المستخدم الذي تتحدث معه هو "${firstName}". إذا كان مناسباً لسياق الحديث، يمكنك الترحيب به أو استخدام اسمه بود.\n` 
+    : '';
+    const systemInstruction = `${nameInstruction}${ARABIC_ONLY_INSTRUCTION}`;
+    
   if (!question) {
     return res.status(400).json({
       success: false,
@@ -227,7 +235,7 @@ const sendTextMessage = async (req, res) => {
   // Call the LLM with isolated system instructions (Arabic enforcement)
   let llmResponse;
   try {
-    llmResponse = await askLLM(question, history, ARABIC_ONLY_INSTRUCTION);
+    llmResponse = await askLLM(question, history, systemInstruction);
   } catch (error) {
     return res.status(502).json({
       success: false,
@@ -288,7 +296,15 @@ const sendImageMessage = async (req, res) => {
     });
   }
 
+
   const { question } = req.body;
+  
+  const user = await User.findById(req.user._id);
+  const fullUserName = user.name || user.username || ''; 
+  const firstName = fullUserName.trim().split(/\s+/)[0];
+
+  const nameContext = firstName ? `معلومة لك: اسم المستخدم الذي تتحدث معه هو "${firstName}".` : '';
+  const greetingInstruction = firstName ? `ابدأ حديثك بالترحيب بالمستخدم باسمه ("${firstName}")، ثم ` : '';
 
   // Verify conversation belongs to user
   const conversation = await Conversation.findOne({
@@ -368,27 +384,37 @@ const sendImageMessage = async (req, res) => {
     isHealthy,
   });
 
-  // Step 2: Build a clean system prompt containing ONLY the core data and instructions
   const confidenceDisplay = typeof confidence === 'number' ? confidence.toFixed(1) : confidence;
 
   const hiddenCnnPrompt = `
+  ${nameContext}
+
 لقد قام نظام الذكاء الاصطناعي (CNN) بتحليل صورة نبات رفعها المستخدم، وكانت نتيجة التحليل كالتالي:
 - المرض المكتشف: ${diseaseName}
 - نسبة الثقة في التشخيص: ${confidenceDisplay}%
 - درجة الخطورة: ${severity}
 - هل النبات سليم: ${isHealthy ? 'نعم' : 'لا'}
+
+⚠️ تعليمات مهمة لك:
+- %إذا كانت نسبة الثقة أقل من 65%:
+  ❗ ممنوع تقديم أي تشخيص أو تخمين.
+  اطلب من المستخدم إعادة تصوير الصورة بجودة أعلى وإضاءة أفضل، واشرح أن الصورة الحالية غير واضحة بما يكفي.
+
+
+- إذا كانت نسبة الثقة 65% أو أعلى:
+  قدم تشخيصاً واضحاً ونصائح عملية.
+
+  
+
 ${cnnResponse.diagnosis && cnnResponse.diagnosis.description ? `- وصف إضافي من النظام: ${cnnResponse.diagnosis.description}` : ''}
 ${cnnResponse.diagnosis && cnnResponse.diagnosis.recommendation ? `- توصية النظام: ${cnnResponse.diagnosis.recommendation}` : ''}
 
 المطلوب منك: تصرف كخبير زراعي ودود وقدم تشخيصاً ونصائح عملية بناءً على هذه المعطيات. لا تذكر أبداً للمستخدم أنك تلقيت هذه البيانات من نظام آخر، بل تحدث وكأنك أنت من قام بالفحص والتشخيص مباشرة.`;
 
-  // Combine the CNN logic and Arabic enforcement into a single system instruction payload
   const systemInstruction = `${hiddenCnnPrompt}\n\n${ARABIC_ONLY_INSTRUCTION}`;
 
-  // Isolate the user query. If empty, use a standard fallback prompt for the user role
   const userQuery = question && question.trim() !== '' ? question : 'برجاء شرح نتيجة التشخيص والنصائح العملية الخاصة بحالة النبات.';
 
-  // Fetch ALL previous messages (text + image) so the LLM keeps full context
   const previousMessages = await Message.find({
     conversation: conversation._id,
     _id: { $ne: userMessage._id },
@@ -424,7 +450,6 @@ ${cnnResponse.diagnosis && cnnResponse.diagnosis.recommendation ? `- توصية 
     return `🌿 نتائج تحليل المرض:\n${JSON.stringify(cnnResponse)}`;
   };
 
-  // Step 3: Ask the LLM with properly separated parameters (Query vs System Instruction)
   let assistantMessage;
   try {
     const llmResponse = await askLLM(userQuery, history, systemInstruction);
