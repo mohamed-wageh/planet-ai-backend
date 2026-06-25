@@ -355,8 +355,6 @@ const sendImageMessage = async (req, res) => {
     });
   }
 
-  const user = await User.findById(req.user._id);
-
   let diseaseName = 'Unknown';
   let confidence = 0;
   let severity = 'Unknown';
