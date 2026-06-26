@@ -1,6 +1,6 @@
 const express = require('express');
 const router = express.Router();
-const { submitComplaint, getAllComplaints } = require('../controllers/complaint.controller');
+const { submitComplaint, getAllComplaints, getUserComplaints, answerComplaint, deleteComplaint } = require('../controllers/complaint.controller');
 const authMiddleware = require('../middlewares/auth.middleware');
 
 /**
@@ -139,5 +139,8 @@ router.get('/', getAllComplaints);
  *         description: Internal server error
  */
 router.post('/', submitComplaint);
+router.get('/my-complaints', getUserComplaints);
+router.put('/:id/answer', authMiddleware.adminProtect, answerComplaint);
+router.delete('/:id', authMiddleware.adminProtect, deleteComplaint);
 
 module.exports = router;

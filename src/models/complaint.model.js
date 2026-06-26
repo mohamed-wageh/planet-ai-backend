@@ -20,6 +20,14 @@ const complaintSchema = new mongoose.Schema(
             type: String,
             enum: ['pending', 'reviewed', 'resolved'],
             default: 'pending'
+        },
+        answer: {
+            type: String,
+            default: null
+        },
+        answeredAt: {
+            type: Date,
+            default: null
         }
     },
     { timestamps: true }
