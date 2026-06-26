@@ -2,6 +2,7 @@ const express = require('express');
 const router = express.Router();
 const { submitComplaint, getAllComplaints, getUserComplaints, answerComplaint, deleteComplaint } = require('../controllers/complaint.controller');
 const authMiddleware = require('../middlewares/auth.middleware');
+const { isAdmin } = require('../middlewares/admin.middleware');
 
 /**
  * @swagger
@@ -140,7 +141,7 @@ router.get('/', getAllComplaints);
  */
 router.post('/', submitComplaint);
 router.get('/my-complaints', getUserComplaints);
-router.put('/:id/answer', authMiddleware.adminProtect, answerComplaint);
-router.delete('/:id', authMiddleware.adminProtect, deleteComplaint);
+router.put('/:id/answer', isAdmin, answerComplaint);
+router.delete('/:id', isAdmin, deleteComplaint);
 
 module.exports = router;
