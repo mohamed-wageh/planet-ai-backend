@@ -1,5 +1,6 @@
 const Post = require("../models/post.model");
 const Comment = require("../models/comment.model");
+const User = require("../models/user.model");
 
 exports.createPost = async (req, res, next) => {
   try {
@@ -59,9 +60,27 @@ exports.getPosts = async (req, res, next) => {
   try {
     const posts = await Post.find()
       .populate("author", "username role governorate")
-      .sort("-createdAt");
+      .sort("-createdAt")
+      .lean();
 
-    res.status(200).json({ success: true, count: posts.length, data: posts });
+    // Get comment counts for each post
+    const postIds = posts.map(p => p._id);
+    const commentCounts = await Comment.aggregate([
+      { $match: { post: { $in: postIds } } },
+      { $group: { _id: "$post", count: { $sum: 1 } } }
+    ]);
+
+    const countMap = {};
+    commentCounts.forEach(c => {
+      countMap[c._id.toString()] = c.count;
+    });
+
+    const postsWithCounts = posts.map(p => ({
+      ...p,
+      commentCount: countMap[p._id.toString()] || 0
+    }));
+
+    res.status(200).json({ success: true, count: postsWithCounts.length, data: postsWithCounts });
   } catch (error) {
     next(error);
   }
@@ -87,6 +106,53 @@ exports.togglePostUpvote = async (req, res, next) => {
 
     await post.save();
     res.status(200).json({ success: true, upvotesCount: post.upvotes.length });
+  } catch (error) {
+    next(error);
+  }
+};
+
+exports.toggleSavePost = async (req, res, next) => {
+  try {
+    const post = await Post.findById(req.params.postId);
+    if (!post) {
+      return res.status(404).json({ success: false, message: "Post not found" });
+    }
+
+    const user = await User.findById(req.user._id);
+    if (!user) {
+      return res.status(404).json({ success: false, message: "User not found" });
+    }
+
+    const hasSaved = user.savedPosts && user.savedPosts.includes(post._id);
+
+    if (hasSaved) {
+      user.savedPosts.pull(post._id);
+    } else {
+      if (!user.savedPosts) user.savedPosts = [];
+      user.savedPosts.push(post._id);
+    }
+
+    await user.save();
+    res.status(200).json({ success: true, savedPosts: user.savedPosts });
+  } catch (error) {
+    next(error);
+  }
+};
+
+exports.getSavedPosts = async (req, res, next) => {
+  try {
+    const user = await User.findById(req.user._id);
+    res.status(200).json({ success: true, data: user.savedPosts || [] });
+  } catch (error) {
+    next(error);
+  }
+};
+
+exports.getCommunityStats = async (req, res, next) => {
+  try {
+    const membersCount = await User.countDocuments();
+    const postsCount = await Post.countDocuments();
+    res.status(200).json({ success: true, data: { membersCount, postsCount } });
   } catch (error) {
     next(error);
   }

@@ -24,6 +24,8 @@ const upload = require('../middlewares/upload.middleware');
 // Protect all routes
 router.use(protect);
 
+router.get('/stats', communityController.getCommunityStats);
+
 /**
  * @swagger
  * /api/community/posts:
@@ -86,6 +88,8 @@ router
  *         description: Upvote toggled successfully
  */
 router.post('/posts/:postId/upvote', communityController.togglePostUpvote);
+router.post('/posts/:postId/save', communityController.toggleSavePost);
+router.get('/saved-posts', communityController.getSavedPosts);
 
 /**
  * @swagger
