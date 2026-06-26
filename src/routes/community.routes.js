@@ -227,5 +227,9 @@ router.post('/comments/:commentId/vote', communityController.voteComment);
  *         description: Server Error
  */
 router.get('/users/:userId/posts', communityController.getPostsByUserId);
-
+router.delete(
+  "/posts/:postId/comments/:commentId",
+  communityController.deleteComment,
+);
+router.delete("/posts/:postId", communityController.deletePost);
 module.exports = router;
